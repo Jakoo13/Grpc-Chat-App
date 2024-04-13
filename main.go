@@ -1,12 +1,13 @@
 package main
 
 import (
-	"grpc_chat_app/proto"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"sync"
+
+	"github.com/jakoo13/grpc_chat_app/pb"
 
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
@@ -20,17 +21,18 @@ func init() {
 }
 
 type Connection struct {
-	stream proto.Broadcast_CreateStreamServer
+	stream pb.Broadcast_CreateStreamServer
 	id     string
 	active bool
 	error  chan error
 }
 
 type Server struct {
+	pb.UnimplementedBroadcastServer
 	Connections []*Connection
 }
 
-func (s *Server) CreateStream(pconn *proto.Connect, stream proto.Broadcast_CreateStreamServer) error {
+func (s *Server) CreateStream(pconn *pb.Connect, stream pb.Broadcast_CreateStreamServer) error {
 	if s == nil {
 		return fmt.Errorf("Server is nil")
 	}
@@ -46,27 +48,29 @@ func (s *Server) CreateStream(pconn *proto.Connect, stream proto.Broadcast_Creat
 	return <-conn.error
 }
 
-func (s *Server) BroadcastMessage(ctx context.Context, msg *proto.Message) (*proto.Close, error) {
+func (s *Server) BroadcastMessage(ctx context.Context, msg *pb.Message) (*pb.Close, error) {
 	wait := sync.WaitGroup{}
 	done := make(chan int)
 
 	for _, conn := range s.Connections {
-		wait.Add(1)
+		if conn.id == msg.ToId {
+			wait.Add(1)
 
-		go func(msg *proto.Message, conn *Connection) {
-			defer wait.Done()
+			go func(msg *pb.Message, conn *Connection) {
+				defer wait.Done()
 
-			if conn.active {
-				err := conn.stream.Send(msg)
-				fmt.Printf("Sending message to: %v from %v", conn.id, msg.Id)
+				if conn.active {
+					err := conn.stream.Send(msg)
+					fmt.Printf("Sending message to: %v from %v", conn.id, msg.ToId)
 
-				if err != nil {
-					grpcLog.Errorf("Error with Stream: %v - Error: %v", conn.stream, err)
-					conn.active = false
-					conn.error <- err
+					if err != nil {
+						grpcLog.Errorf("Error with Stream: %v - Error: %v", conn.stream, err)
+						conn.active = false
+						conn.error <- err
+					}
 				}
-			}
-		}(msg, conn)
+			}(msg, conn)
+		}
 
 	}
 
@@ -76,7 +80,7 @@ func (s *Server) BroadcastMessage(ctx context.Context, msg *proto.Message) (*pro
 	}()
 
 	<-done
-	return &proto.Close{}, nil
+	return &pb.Close{}, nil
 }
 
 func main() {
@@ -92,6 +96,6 @@ func main() {
 
 	grpcLog.Info("Starting server at port :8080")
 
-	proto.RegisterBroadcastServer(grpcServer, server)
+	pb.RegisterBroadcastServer(grpcServer, server)
 	grpcServer.Serve(listener)
 }

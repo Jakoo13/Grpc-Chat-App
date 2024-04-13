@@ -2,13 +2,15 @@ syntax = "proto3";
 
 package proto;
 
+option go_package = "github.com/jakoo13/grpc_chat_app/pb";
+
 message User {
   string id = 1;
   string name = 2;
 }
 
 message Message {
-  string id = 1;
+  string to_id = 1;
   string content = 2;
   string timestamp = 3;
 }

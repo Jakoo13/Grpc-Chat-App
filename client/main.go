@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"crypto/sha256"
-	"grpc_chat_app/proto"
+	proto "github.com/jakoo13/grpc_chat_app/pb"
 	"flag"
 	"fmt"
 	"os"
@@ -47,7 +47,7 @@ func connect(user *proto.User) error {
 				break
 			}
 
-			fmt.Printf("%v : %s\n", msg.Id, msg.Content)
+			fmt.Printf("%v : %s\n", msg.ToId, msg.Content)
 
 		}
 	}(stream)
@@ -84,7 +84,7 @@ func main() {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			msg := &proto.Message{
-				Id:        user.Id,
+				ToId:        user.Id,
 				Content:   scanner.Text(),
 				Timestamp: timestamp.String(),
 			}
