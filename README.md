@@ -1,1 +1,1 @@
-# docker_grpc_chat_tutorial
+Grpc Chat App
