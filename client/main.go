@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"crypto/sha256"
-	"docker_example/proto"
+	"grpc_chat_app/proto"
 	"flag"
 	"fmt"
 	"os"
@@ -43,7 +43,7 @@ func connect(user *proto.User) error {
 		for {
 			msg, err := str.Recv()
 			if err != nil {
-				streamerror = fmt.Errorf("Error reading message: %v", err)
+				streamerror = fmt.Errorf("error reading message: %v", err)
 				break
 			}
 

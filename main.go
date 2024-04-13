@@ -1,7 +1,8 @@
 package main
 
 import (
-	"docker_example/proto"
+	"grpc_chat_app/proto"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -26,10 +27,13 @@ type Connection struct {
 }
 
 type Server struct {
-	Connection []*Connection
+	Connections []*Connection
 }
 
 func (s *Server) CreateStream(pconn *proto.Connect, stream proto.Broadcast_CreateStreamServer) error {
+	if s == nil {
+		return fmt.Errorf("Server is nil")
+	}
 	conn := &Connection{
 		stream: stream,
 		id:     pconn.User.Id,
@@ -37,7 +41,7 @@ func (s *Server) CreateStream(pconn *proto.Connect, stream proto.Broadcast_Creat
 		error:  make(chan error),
 	}
 
-	s.Connection = append(s.Connection, conn)
+	s.Connections = append(s.Connections, conn)
 
 	return <-conn.error
 }
@@ -46,7 +50,7 @@ func (s *Server) BroadcastMessage(ctx context.Context, msg *proto.Message) (*pro
 	wait := sync.WaitGroup{}
 	done := make(chan int)
 
-	for _, conn := range s.Connection {
+	for _, conn := range s.Connections {
 		wait.Add(1)
 
 		go func(msg *proto.Message, conn *Connection) {
@@ -54,7 +58,7 @@ func (s *Server) BroadcastMessage(ctx context.Context, msg *proto.Message) (*pro
 
 			if conn.active {
 				err := conn.stream.Send(msg)
-				grpcLog.Info("Sending message to: ", conn.stream)
+				fmt.Printf("Sending message to: %v from %v", conn.id, msg.Id)
 
 				if err != nil {
 					grpcLog.Errorf("Error with Stream: %v - Error: %v", conn.stream, err)
@@ -76,9 +80,9 @@ func (s *Server) BroadcastMessage(ctx context.Context, msg *proto.Message) (*pro
 }
 
 func main() {
-	var connections []*Connection
-
-	server := &Server{connections}
+	server := &Server{
+		Connections: make([]*Connection, 0),
+	}
 
 	grpcServer := grpc.NewServer()
 	listener, err := net.Listen("tcp", ":8080")
